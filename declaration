@@ -1,0 +1,122 @@
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import * as Yup from 'yup';
+
+const SocialMediaForm = () => {
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: yupResolver(validationSchema),
+    mode: 'onBlur'
+  });
+
+  const validationSchema = Yup.object().shape({
+    youtube: Yup.string().url('Invalid YouTube URL').required('YouTube URL is required'),
+    instagram: Yup.string().url('Invalid Instagram URL').required('Instagram URL is required'),
+    facebook: Yup.string().url('Invalid Facebook URL').required('Facebook URL is required'),
+  });
+
+  const onSubmit = async (data) => {
+    try {
+      const response = await fetch('http://localhost:3007/server/save-social-media-urls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      // Handle success message or redirection
+    } catch (error) {
+      // Handle error
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div>
+        <label>YouTube:</label>
+        <input type="text" {...register('youtube')} />
+        {errors.youtube && <p className="error">{errors.youtube.message}</p>}
+      </div>
+      <div>
+        <label>Instagram:</label>
+        <input type="text" {...register('instagram')} />
+        {errors.instagram && <p className="error">{errors.instagram.message}</p>}
+      </div>
+      <div>
+        <label>Facebook:</label>
+        <input type="text" {...register('facebook')} />
+        {errors.facebook && <p className="error">{errors.facebook.message}</p>}
+      </div>
+      <button type="submit">Submit</button>
+    </form>
+  );
+};
+
+export default SocialMediaForm;
+// socialMediaSchema.js
+
+const mongoose = require('mongoose');
+
+const socialMediaSchema = new mongoose.Schema({
+  youtube: { type: String, required: true },
+  instagram: { type: String, required: true },
+  facebook: { type: String, required: true },
+});
+
+const SocialMedia = mongoose.model('SocialMedia', socialMediaSchema);
+
+module.exports = SocialMedia;
+// Backend - Express.js
+
+const express = require('express');
+const router = express.Router();
+const SocialMedia = require('../models/socialMediaSchema'); // Import the SocialMedia schema
+
+router.post('/save-social-media-urls', async (req, res) => {
+  try {
+    const { youtube, instagram, facebook } = req.body;
+
+    // Create a new SocialMedia document using the Mongoose schema
+    const newSocialMedia = new SocialMedia({ youtube, instagram, facebook });
+
+    // Save the newSocialMedia document to the database
+    await newSocialMedia.save();
+
+    return res.status(200).json({ message: 'Social media URLs saved successfully' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+module.exports = router;
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const SocialMediaLinks = () => {
+  const [socialMedia, setSocialMedia] = useState({});
+
+  useEffect(() => {
+    const fetchSocialMediaUrls = async () => {
+      try {
+        const response = await axios.get('http://localhost:3007/server/get-social-media-urls');
+        setSocialMedia(response.data);
+      } catch (error) {
+        console.error('Error fetching social media URLs:', error);
+      }
+    };
+
+    fetchSocialMediaUrls();
+  }, []);
+
+  return (
+    <div>
+      <h2>Social Media Links</h2>
+      <p>YouTube: {socialMedia.youtube}</p>
+      <p>Instagram: {socialMedia.instagram}</p>
+      <p>Facebook: {socialMedia.facebook}</p>
+    </div>
+  );
+};
+
+export default SocialMediaLinks;
