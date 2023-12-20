@@ -1,64 +1,4 @@
-  <Route exact path="/user-details/:userId" component={UserDetails} />
--------------------------------------------------------------------------
-<CTableDataCell>
-            <Link to={`/user-details/${user._id}`}>{user._id}</Link>
-          </CTableDataCell>
-----------------------------------------------------
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { useParams } from 'react-router-dom';
 
-const UserDetails = () => {
-  const { userId } = useParams();
-  const [userDetails, setUserDetails] = useState(null);
-
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      try {
-        const response = await axios.get(`http://localhost:3007/server/user-details/${userId}`);
-        setUserDetails(response.data);
-      } catch (error) {
-        console.error('Error fetching user details:', error);
-      }
-    };
-
-    fetchUserDetails();
-  }, [userId]);
-
-  return (
-    <div>
-      {userDetails ? (
-        <div>
-          <h2>User Details</h2>
-          {/* Display user details here */}
-          {/* Example: */}
-          <p>User ID: {userDetails._id}</p>
-          <p>Email: {userDetails.email}</p>
-          {/* Display other details */}
-        </div>
-      ) : (
-        <p>Loading...</p>
-      )}
-    </div>
-  );
-};
-
-export default UserDetails;
-------------------------------------------------------------------
-router.get('/user-details/:userId', async (req, res) => {
-  const userId = req.params.userId; // Get the user ID from the request parameters
-
-  try {
-    const userDetails = await User.findById(userId); // Find user details by ID
-    if (!userDetails) {
-      return res.status(404).json({ message: 'User not found' }); // If user ID doesn't exist
-    }
-    res.status(200).json(userDetails); // Send user details if found
-  } catch (error) {
-    console.error('Error fetching user details:', error);
-    res.status(500).json({ message: 'Server Error' });
-  }
-});
 --------------------------------------------------------------------------------
 router.put('/reject-kyc/:kycId', async (req, res) => {
   try {
@@ -157,3 +97,26 @@ const Kycadmin = () => {
 };
 
 export default Kycadmin;
+---------------------------------------------------------------------------------------------------------------
+router.get('/referalcode_generate', async (req, res) => { 
+  try {
+    const allOwnerUsers = await User.find({ owner: true }, 'myreferalcode'); // Fetching all users with owner field set to true and their referral codes
+    if (!allOwnerUsers || allOwnerUsers.length === 0) {
+      return res.status(404).json({ message: 'No users found with owner privileges' });
+    }
+
+    // Extracting an array of referral codes from fetched documents
+    const referralCodesArray = allOwnerUsers.map((user) => user.myreferalcode);
+
+    // Selecting a random referral code from the array
+    const randomIndex = Math.floor(Math.random() * referralCodesArray.length);
+    const randomReferralCode = referralCodesArray[randomIndex];
+
+    res.status(200).json({ randomReferralCode });
+  } catch (error) {
+    console.error('Error fetching random referral code:', error);
+    res.status(500).send('Error fetching referral code');
+  }
+});
+---------------------------------------------------------------------------------------------------------------------------------------------
+
