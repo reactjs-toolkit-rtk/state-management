@@ -120,3 +120,173 @@ router.get('/referalcode_generate', async (req, res) => {
 });
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
+import * as Yup from 'yup';
+
+// ... existing code
+
+const YourComponent = () => {
+  // ... existing code
+
+  const validationSchema = Yup.object().shape({
+    newPattern: Yup.array().required('New Pattern is required'),
+    confirmPattern: Yup.array().required('Confirm Pattern is required')
+      .oneOf([Yup.ref('newPattern')], 'Patterns must match'),
+  });
+
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: yupResolver(validationSchema),
+    mode: 'all',
+  });
+
+  // ... existing code
+
+  const handlePatternSubmit = async () => {
+    try {
+      // ... existing code
+      
+      const response = await axios.put('http://localhost:3007/server/admin/pattern', {
+        newPattern,
+      });
+      
+      // Handle success message or redirection
+    } catch (error) {
+      // Handle error
+    }
+  };
+
+  return (
+    <div className="bg-light min-vh-100 d-flex flex-row align-items-center">
+      {/* ... existing code */}
+      
+      <CModal
+        show={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+      >
+        <CModalHeader closeButton>
+          <CModalTitle>Set New Pattern</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <form onSubmit={handleSubmit(handlePatternSubmit)}>
+            <PatternLock
+              width={300}
+              pointSize={15}
+              size={3}
+              path={newPattern}
+              onChange={handlePatternChange}
+              onFinish={() => {}}
+            />
+            {errors.newPattern && <p className="text-danger">{errors.newPattern.message}</p>}
+            <PatternLock
+              width={300}
+              pointSize={15}
+              size={3}
+              path={confirmPattern}
+              onChange={handleConfirmPatternChange}
+              onFinish={() => {}}
+            />
+            {errors.confirmPattern && <p className="text-danger">{errors.confirmPattern.message}</p>}
+            <CButton color="primary" type="submit">
+              Set Pattern
+            </CButton>
+          </form>
+        </CModalBody>
+        {/* ... existing code */}
+      </CModal>
+    </div>
+  );
+};
+
+export default YourComponent;
+------------------------------------------------
+const Admin = require('../models/Admin'); // Import your Mongoose model
+
+router.put('/admin/pattern', async (req, res) => {
+  try {
+    const { newPattern } = req.body;
+    const adminId = req.user.id; // Assuming you have the admin's ID from authentication
+
+    // Update the pattern for the logged-in admin user in the database
+    const updatedAdmin = await Admin.findByIdAndUpdate(
+      adminId,
+      { patternlock: newPattern },
+      { new: true } // To return the updated document
+    );
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ message: 'Admin user not found' });
+    }
+
+    return res.status(200).json({ message: 'Pattern updated successfully', updatedAdmin });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+----------------------------------------------------
+// TwoFactorAuthPage.jsx
+
+import React, { useState } from 'react';
+import axios from 'axios';
+
+const TwoFactorAuthPage = () => {
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [verificationMessage, setVerificationMessage] = useState('');
+
+  const handleVerification = async () => {
+    try {
+      const response = await axios.post('http://localhost:3007/server/verify-2fa', {
+        twoFactorCode,
+      });
+
+      setVerificationMessage(response.data.message || 'Verification successful');
+    } catch (error) {
+      setVerificationMessage(error.response.data.message || 'Verification failed');
+    }
+  };
+
+  return (
+    <div>
+      <h1>Two-Factor Authentication</h1>
+      <input
+        type="text"
+        placeholder="Enter 2FA Code"
+        value={twoFactorCode}
+        onChange={(e) => setTwoFactorCode(e.target.value)}
+      />
+      <button onClick={handleVerification}>Verify</button>
+      <p>{verificationMessage}</p>
+    </div>
+  );
+};
+
+export default TwoFactorAuthPage;
+-------------------------------------------------------
+npm install speakeasy
+
+---------------------------------
+const speakeasy = require('speakeasy');
+
+// Your user should have a secret key associated with 2FA during setup
+
+router.post('/verify-2fa', async (req, res) => {
+  try {
+    const { twoFactorCode, userSecret } = req.body;
+    
+    // Verify the 2FA code using the secret key
+    const verified = speakeasy.totp.verify({
+      secret: userSecret, // The secret key associated with the user
+      encoding: 'base32',
+      token: twoFactorCode,
+    });
+
+    if (verified) {
+      return res.status(200).json({ message: 'Verification successful' });
+    } else {
+      return res.status(400).json({ message: 'Invalid code' });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+----------------------------------------------------------------------------------------------------------------------------------------------------------
